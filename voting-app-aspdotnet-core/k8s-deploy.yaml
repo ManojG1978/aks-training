@@ -1,0 +1,80 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote-app-deployment
+  labels:
+    app: vote-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vote-app
+  template:
+    metadata:
+      labels:
+        app: vote-app
+    spec:
+      containers:
+      - name: vote-app
+        image: vote-app:v1.0
+        ports:
+        - containerPort: 80
+          name: vote-app-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vote-app
+  name: vote-app-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - name: vote-service-port
+    port: 5000
+    targetPort: 80
+  selector:
+    app: vote-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-db
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-db
+  template:
+    metadata:
+      labels:
+        app: redis-db
+    spec:
+      containers:
+      - image: redis:alpine
+        name: redis-db
+        ports:
+        - containerPort: 6379
+          name: redis-db
+        volumeMounts:
+        - mountPath: /data
+          name: redis-data
+      volumes:
+      - name: redis-data
+        emptyDir: {} 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis-db
+  name: redis-db
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis-db
+    port: 6379
+  selector:
+    app: redis-db

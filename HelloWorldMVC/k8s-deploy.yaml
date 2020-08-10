@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld-deployment
+  labels:
+    app: helloworld
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helloworld
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+      - name: helloworld
+        image: ncdev.azurecr.io/helloworld:1.0
+        ports:
+        - containerPort: 80
+          name: helloworld-port
+      imagePullSecrets:
+        - name: regcred 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: helloworld
+  name: helloworld-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - name: helloworld-service-port
+    port: 80
+    targetPort: 80
+  selector:
+    app: helloworld
