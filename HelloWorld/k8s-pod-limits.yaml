@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: helloworld-pod
+spec:
+  containers:
+  - name: helloworld
+    image: ncaks.azurecr.io/helloworld:1.1
+    resources:
+      limits:
+        memory: "20Mi"
+        cpu: "1.0"
+      requests:
+        memory: "10Mi"
+        cpu: "0.5"

@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: vote-app
-        image: vote-app:v1.0
+        image: ncaks.azurecr.io/vote-app:1.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
           name: vote-app-port
@@ -35,6 +36,33 @@ spec:
     targetPort: 80
   selector:
     app: vote-app
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-storage
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile
+  azureFile:
+    secretName: storage-key
+    shareName: redis
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: azurefile
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,7 +91,8 @@ spec:
           name: redis-data
       volumes:
       - name: redis-data
-        emptyDir: {} 
+        persistentVolumeClaim:
+          claimName: redis-storage
 ---
 apiVersion: v1
 kind: Service

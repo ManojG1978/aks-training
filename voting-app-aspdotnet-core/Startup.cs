@@ -1,9 +1,12 @@
 using System.Linq;
 using System.Net;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 
 namespace VotingApp
@@ -27,6 +30,11 @@ namespace VotingApp
                 options.Configuration = "redis-db";
                 options.InstanceName = "SampleInstance";
             });
+
+            services.AddHealthChecks()
+                .AddRedis(redisConnectionString: "redis-db:6379", failureStatus: HealthStatus.Degraded);
+
+            services.AddHealthChecksUI();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -54,7 +62,19 @@ namespace VotingApp
                 endpoints.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
+                
+                endpoints.MapHealthChecks("/liveness", new HealthCheckOptions
+                {
+                    Predicate = r => r.Name.Contains("self")
+                });
+                endpoints.MapHealthChecks("/hc", new HealthCheckOptions()
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
             });
+
+            app.UseHealthChecksUI(config=> config.UIPath = "/hc-ui");
         }
     }
 }

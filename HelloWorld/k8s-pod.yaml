@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: helloworld-pod
+spec:
+  containers:
+  - name: helloworld
+    image: ncaks.azurecr.io/helloworld:1.1
+  restartPolicy: Never

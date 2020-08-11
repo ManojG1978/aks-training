@@ -6,7 +6,7 @@ namespace HelloWorld
     {
         static void Main(string[] args)
         {
-            Console.WriteLine($"Hello World! from from {System.Net.Dns.GetHostName()}");
+            Console.WriteLine($"Hello World 2.0! from from {System.Net.Dns.GetHostName()}");
         }
     }
 }
