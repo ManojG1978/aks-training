@@ -1,0 +1,13 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: sre-user-access
+  namespace: sre
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sre-user-full-access
+subjects:
+- kind: Group
+  namespace: sre
+  name: e2e83f1d-c9df-4ce7-bbfa-7afebc61d1f2

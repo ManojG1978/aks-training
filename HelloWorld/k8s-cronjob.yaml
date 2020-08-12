@@ -1,0 +1,16 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello-world-cronjob
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: ncaks.azurecr.io/helloworld:1.0
+            imagePullPolicy: Always
+          restartPolicy: OnFailure
+          

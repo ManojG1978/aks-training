@@ -17,6 +17,7 @@ spec:
       containers:
       - name: helloworld-mvc
         image: ncaks.azurecr.io/helloworld-mvc:1.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
           name: helloworld-port

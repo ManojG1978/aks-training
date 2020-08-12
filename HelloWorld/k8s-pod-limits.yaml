@@ -5,7 +5,8 @@ metadata:
 spec:
   containers:
   - name: helloworld
-    image: ncaks.azurecr.io/helloworld:1.1
+    image: ncaks.azurecr.io/helloworld:1.0
+    imagePullPolicy: Always
     resources:
       limits:
         memory: "20Mi"
