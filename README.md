@@ -1,5 +1,7 @@
 # AKS Training Lab Instructions
 
+All labs can be done within the Azure CLI (docker samples can be done on Katacoda). This is by design - to avoid issues with Docker Desktop during the workshop. If you have Docker Desktop, you can run the docker containers and K8S workloads locally, but it is not a dependency per se.  
+
 ## Lab 1: Getting started with Containers
 
 1. [Open the Docker playground on KataKoda](https://www.katacoda.com/courses/docker/playground)
@@ -9,6 +11,11 @@
    `docker images`\
    `docker run -it  ubuntu`
 
+3. Switch to the NGINX playground. We'll quickly spin up an NGINX Webserver and access a static site from a browser. [Navigate to the docker playgroud](https://www.katacoda.com/courses/docker/create-nginx-static-web-server). Try a few of docker commands:
+`docker exec -it containerId /bin/sh`
+`docker pull debian`
+`docker rmi imageName`
+   
 ## Lab 2: Running containers on Azure Container Instances
 
 1) Start the Azure Cloud Shell.
@@ -22,7 +29,7 @@
 `git clone https://github.com/ManojG1978/aks-training.git`\
 `cd aks-training/HelloWorldMVC`
 
-5) Build the Docker Image for the Hello World ASP.NET Core MVC site and push it to the ACR
+5) Build the Docker Image for the Hello World ASP.NET Core MVC site and push it to the ACR\
 `az acr build --registry yourACRName --image helloworld-mvc:1.0 .`
 
 6) Create an Azure Container Instance in the portal using the image built. Select networking type as Public and give it a unique DNS label. A new Public IP is created for the container instance. Once created navigate to the URL and review the printed message (host name of the container)
@@ -98,7 +105,8 @@ REGION=eastus
 3) Deploy a pod which stresses memory.\
 `kubectl create -f k8s-pod-limits.yaml`
 4) Investigate the Pod lifecycle and check that the POD is terminated due to OOM limits.\
-`kubectl get pod memory-stress -o yaml`
+`kubectl get pod memory-stress`
+`kubectl describe pod memory-stress`
 
 ## Lab 8: K8S Cronjob Scheduling
 
@@ -165,11 +173,11 @@ REGION=eastus
 `az ad sp create-for-rbac --name aksServicePrincipal --skip-assignment`
 3) Setup a Key Vault in the portal, ensure you assign Get and List permissions to the newly created Service Principal.
 4) Create a new Secret with name *connectionString*. Add a secret value.
-5) Create a K8S secret to house the credentials of Service Principal
+5) Create a K8S secret to house the credentials of Service Principal\
 `kubectl create secret generic secrets-store-creds --from-literal clientid=yourClientID --from-literal clientsecret=yourClientSecret`
 6) Create the *ServiceProviderClass* object. Open the k8s-secretprovider.yaml in the Code editor and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID\
 `kubectl create -f k8s-secretprovider.yaml`
-7) Create a pod that mounts secrets from the key vault.
+7) Create a pod that mounts secrets from the key vault.\
 `kubectl create -f k8s-nginx-secrets.yaml`
 8) To display all the secrets that are contained in the pod, run the following command\
 `kubectl exec -it nginx-secrets-store-inline -- ls /mnt/secrets-store/`
@@ -205,7 +213,7 @@ AKSDEV_ID=$(az ad user create \
   --query objectId -o tsv)
 ```
 
-5) Add the developer account to the *appdev* group
+5) Add the developer account to the *appdev* group\
 `az ad group member add --group appdev --member-id $AKSDEV_ID`
 
 6) Create a user for the SRE role. Replace yourdomain with your Azure AD domain name
@@ -227,19 +235,19 @@ AKSSRE_ID=$(az ad user create \
 9) Navigate to the RBAC folder. Create a K8S role called dev, which has full access to the dev namespace\
 `kubectl create -f .\k8s-role-dev.yaml`
 
-10)Get the AD group ID for the developer group
+10) Get the AD group ID for the developer group\
 `az ad group show --group appdev --query objectId -o tsv`
 
 11) Open *k8s-rolebinding-dev.yaml* and update the group id with the value obtained earlier. Create the role binding for the dev group\
 `kubectl create -f .\k8s-rolebinding-dev.yaml`
 
-12) Create a new K8s namespace called *sre*
+12) Create a new K8s namespace called *sre*\
 `kubectl create namespace sre`
 
 13) Create a K8S role for SRE with all permissions on the *sre* namespace\
 `kubectl create -f .\k8s-role-sre.yaml`
 
-14) Get the AD group Id of the SRE Group
+14) Get the AD group Id of the SRE Group\
 `az ad group show --group opssre --query objectId -o tsv`
 
 15) Open *k8s-rolebinding-sre.yaml* and update the group id with the value obtained earlier. Create the role binding for the dev group\
@@ -256,7 +264,7 @@ AKSSRE_ID=$(az ad user create \
 1) Auto-scale deployment using the Horizontal pod autoscaler using a CPU metric threshold  
 `kubectl autoscale deployment vote-app-deployment --cpu-percent=30 --min=3 --max=6`
 
-2) Scale nodes in the cluster using this command:
+2) Scale nodes in the cluster using this command:\
 `az aks scale --resource-group aks-training --name aks-training-cluster --node-count 2`
 
 ## Lab 14: Navigating the native K8s administration portal
@@ -267,3 +275,18 @@ AKSSRE_ID=$(az ad user create \
 3) Run the command to access the K8s Admin portal\
 `az aks browse --resource-group aks-training --name aks-training-cluster`
 4) When asked for credentials, choose KubeConfig and select the file you downloaded. The portal should now show up.
+
+## Lab 15: Monitoring and Alerts with Container Insights/Azure Monitor
+
+1) When we setup the cluster earlier in the lab, we had enabled Container Insights. If not, you can go to the Insights blade on the portal, for your AKS cluster and enable it. It might take 5-10 minutes for the data to show up.
+2) Review the Cluster, Nodes, Controllers, Containers and Deployment tabs respectively.  
+3) For select pods (like Stress), select View Container logs from the right pane
+4) Play with filters and try reviews log records. You can create your own queries like below:
+
+```
+ContainerInventory
+| where  Image contains "stress"
+```
+
+5) To get familiar with alerts, you can select the "Recommended Alerts (Preview)" link from the menu. For this exercise, enable the alert for "OOM Killed Containers" and create an action group to email yourself. Try recreating the memory-stress pod from Lab 7 and verify you get an email alert.
+ 
