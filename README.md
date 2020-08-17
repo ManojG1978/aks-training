@@ -6,24 +6,24 @@ All labs can be done within the Azure CLI (docker samples can be done on Katacod
 
 1. [Open the Docker playground on KataKoda](https://www.katacoda.com/courses/docker/playground)
 
-2. Run basic docker CLI commands
+2. Run basic docker CLI commands\
    `docker run hello-world`\
    `docker images`\
    `docker run -it  ubuntu`
 
-3. Switch to the NGINX playground. We'll quickly spin up an NGINX Webserver and access a static site from a browser. [Navigate to the docker playgroud](https://www.katacoda.com/courses/docker/create-nginx-static-web-server). Try a few of docker commands:
-`docker exec -it containerId /bin/sh`
-`docker pull debian`
+3. Switch to the NGINX playground. We'll quickly spin up an NGINX Webserver and access a static site from a browser. [Navigate to the docker playgroud](https://www.katacoda.com/courses/docker/create-nginx-static-web-server). Try a few of docker commands:\
+`docker exec -it containerId /bin/sh`\
+`docker pull debian`\
 `docker rmi imageName`
    
 ## Lab 2: Running containers on Azure Container Instances
 
 1) Start the Azure Cloud Shell.
 2) Create a dedicated resource group for the labs in the portal or the CLI. All resources will be housed here.\
-   `az group create --name aks-training --location eastus --admin-enabled`
+   `az group create --name aks-training --location eastus`
 
 3) Create a Container Registry in the Azure Portal using a unique name. Alternatively, use CLI. Make a note of the ACR name. This will be used through the course\
-`az acr create --resource-group aks-training --name yourACRName --sku Basic`
+`az acr create --resource-group aks-training --name yourACRName --sku Basic  --admin-enabled`
 
 4) Clone the Lab Git Repo the Azure Cloud Shell and navigate to the root folder of the repo.\
 `git clone https://github.com/ManojG1978/aks-training.git`\
@@ -61,7 +61,7 @@ REGION=eastus
 8) Deploy HelloWorld Pod from the manifest file\
 `kubectl create -f ./k8s-pod.yaml`
 
-9) Try some imperative commands with Kubectl like:
+9) Try some imperative commands with Kubectl like:\
 `kubectl run -i --tty busybox --image=busybox -- sh`
 
 ## Lab 4: Deploying K8S Service and Load balancer
