@@ -77,12 +77,14 @@ REGION=eastus
 
 ## Lab 5: Deploying a simple two tier app to AKS
 
-1) Navigate to the voting-app-aspdotnet-core folder of the repo.
-2) Open k8s-deploy-aks.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
-3) Deploy the application (front end ASP.NET Core, backend Redis)\
+1) Navigate to the voting-app-aspdotnet-core folder of the repo. This is the canonical two-tier sample from Microsoft and Docker, but built using ASP.NET Core.
+2) Build the Docker Image for the Voting and push it to the ACR\
+`az acr build --registry yourACRName --image vote-app:1.0 .`
+3) Open k8s-deploy-aks.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
+4) Deploy the application (front end ASP.NET Core, backend Redis)\
 `kubectl create -f k8s-deploy-aks.yaml`
 
-4) Investigate the service and the deployment resources. Copy the Public IP of the service and open it on the browser with port 5000. Note that it make take a couple of minutes to provision the public IP\
+5) Investigate the service and the deployment resources. Copy the Public IP of the service and open it on the browser with port 5000. Note that it make take a couple of minutes to provision the public IP\
 `kubectl get all`\
 `kubectl get svc`
 
@@ -105,7 +107,7 @@ REGION=eastus
 3) Deploy a pod which stresses memory.\
 `kubectl create -f k8s-pod-limits.yaml`
 4) Investigate the Pod lifecycle and check that the POD is terminated due to OOM limits.\
-`kubectl get pod memory-stress`
+`kubectl get pod memory-stress`\
 `kubectl describe pod memory-stress`
 
 ## Lab 8: K8S Cronjob Scheduling
@@ -115,7 +117,7 @@ REGION=eastus
 3) Create the Cronjob from the manifest\
 `kubectl create -f ./k8s-cronjob.yaml`
 4) Investigate the jobs, they run approximately every minute\
-`kubectl get cronjob`
+`kubectl get cronjob`\
 `kubectl get jobs --watch`
 
 ## Lab 9: Implementing Persistent Volumes
@@ -254,7 +256,7 @@ AKSSRE_ID=$(az ad user create \
 `kubectl create -f .\k8s-rolebinding-sre.yaml`
 
 16) Reset existing K8S credentials and try logging with with either dev or sre accounts. The account can only execute pods in the corresponding namespace\
-`az aks get-credentials --resource-group aks-training --name aks-training-cluster --overwrite-existing`
+`az aks get-credentials --resource-group aks-training --name aks-training-cluster --overwrite-existing`\
 `kubectl run nginx-dev --image=nginx --namespace dev`
 
 [For more info, refer to this doc sample](https://docs.microsoft.com/en-us/azure/aks/azure-ad-rbac)
