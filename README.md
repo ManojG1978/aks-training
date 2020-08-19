@@ -110,13 +110,17 @@ REGION=eastus
 `kubectl get pod memory-stress`\
 `kubectl describe pod memory-stress`
 
-## Lab 8: K8S Cronjob Scheduling
+## Lab 8: K8S Jobs and Cronjob
 
 1) Navigate to the HelloWorld folder of the repo.
-2) Open k8s-cronjob.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
-3) Create the Cronjob from the manifest\
+2) Create a Job from *k8s-job.yaml*. This is a simple job that sleeps for 25 seconds. 3 such executions complete the overall job\
+`kubectl create -f ./k8s-job.yaml`
+3) Investigate the jobs, notice parallelism. Play around with commands and notice how the *backoffLimit* takes effect.\
+`kubectl get jobs --watch`
+4) Open k8s-cronjob.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
+5) Create the Cronjob from the manifest\
 `kubectl create -f ./k8s-cronjob.yaml`
-4) Investigate the jobs, they run approximately every minute\
+6) Investigate the jobs, they run approximately every minute\
 `kubectl get cronjob`\
 `kubectl get jobs --watch`
 
