@@ -233,8 +233,20 @@ cat bob.csr | base64 | tr -d '\n'
 1) Auto-scale deployment using the Horizontal pod autoscaler using a CPU metric threshold  
 `kubectl autoscale deployment vote-app-deployment --cpu-percent=30 --min=3 --max=6`
 
-2) Scale nodes in the cluster using this command:\
+2) Manually scale nodes in the cluster using this command:\
 `az aks scale --resource-group aks-training --name aks-training-cluster --node-count 2`
+
+3) Setup an autoscaler using the command below (Min 1, Max 2). Alternatively, you could do this in the portal for each of your node pools:
+
+```
+az aks update \
+  --resource-group aks-training \
+  --name aks-training-cluster  \
+  --enable-cluster-autoscaler \
+  --min-count 1 \
+  --max-count 2	
+```
+[For more information, refer docs](https://docs.microsoft.com/en-us/azure/aks/cluster-autoscaler)
 
 ## Lab 14: Navigating the native K8s administration portal
 
