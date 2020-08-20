@@ -30,11 +30,11 @@ namespace VotingApp
                 options.Configuration = "redis-db";
                 options.InstanceName = "SampleInstance";
             });
-
+            
+            services.AddHealthChecksUI();
             services.AddHealthChecks()
                 .AddRedis(redisConnectionString: "redis-db:6379", failureStatus: HealthStatus.Degraded);
-
-            services.AddHealthChecksUI();
+            
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -52,9 +52,7 @@ namespace VotingApp
             }
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
@@ -72,9 +70,9 @@ namespace VotingApp
                     Predicate = _ => true,
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
                 });
-            });
 
-            app.UseHealthChecksUI(config=> config.UIPath = "/hc-ui");
+                app.UseHealthChecksUI(config=> config.UIPath = "/hc-ui");
+            });            
         }
     }
 }

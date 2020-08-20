@@ -8,6 +8,6 @@ roleRef:
   kind: Role
   name: sre-user-full-access
 subjects:
-- kind: Group
+- kind: user
   namespace: sre
-  name: e2e83f1d-c9df-4ce7-bbfa-7afebc61d1f2
+  name: dave

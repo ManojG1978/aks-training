@@ -147,7 +147,7 @@ REGION=eastus
 `STORAGE_KEY=$(az storage account keys list --resource-group $RG_NAME --account-name $AKS_STORAGE_ACCOUNT_NAME --query "[0].value" -o tsv)`\
 `kubectl create secret generic azure-secret --from-literal=azurestorageaccountname=$AKS_STORAGE_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$STORAGE_KEY`
 
-5) Deploy the version of the voting app which has volumes attached to the redis pods. This manifest file creates the underlying Persistent Volume and Persistent Volume Claims (Delete any previous deployment of the voting app if they are already running)\
+5) Deploy the version of the voting app which has volumes attached to the redis pods. Make sure you update the image corresponding to your ACR. This manifest file creates the underlying Persistent Volume and Persistent Volume Claims (Delete any previous deployment of the voting app if they are already running)\
 `kubectl create -f .\k8s-deploy-aks-pv.yaml`
 
 6) Investigate the K8s objects. Check the redis pod and ensure the volume is mounted.\
@@ -162,7 +162,7 @@ REGION=eastus
 ## Lab 10: Leveraging Secrets
 
 1) In this lab, we would set up a secret natively in K8s and access that within a pod. No Key Vault involved here. First create a generic secret containing two values - *user* and *password*\
-`kubectl create secret generic k8sSecret --from-literal=user=u123 --from-literal=password=p123`
+`kubectl create secret generic k8ssecret --from-literal=user=u123 --from-literal=password=p123`
 
 2) Navigate to Secrets folder in the repo and create the Pod from the manifest file. In this scenario, secrets are injected into the pod as environment variables and the pod basically echoes the values on the console.\
 `kubectl create -f .\k8s-secrets-env.yaml`
@@ -181,7 +181,7 @@ REGION=eastus
 4) Create a new Secret with name *connectionString*. Add a secret value.
 5) Create a K8S secret to house the credentials of Service Principal\
 `kubectl create secret generic secrets-store-creds --from-literal clientid=yourClientID --from-literal clientsecret=yourClientSecret`
-6) Create the *ServiceProviderClass* object. Open the k8s-secretprovider.yaml in the Code editor and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID\
+6) Create the *ServiceProviderClass* object. Open the k8s-secretprovider.yaml in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID)\
 `kubectl create -f k8s-secretprovider.yaml`
 7) Create a pod that mounts secrets from the key vault.\
 `kubectl create -f k8s-nginx-secrets.yaml`
@@ -192,80 +192,43 @@ REGION=eastus
 
 [For More information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/key-vault/general/key-vault-integrate-kubernetes)
 
-## Lab 12: Implementing RBAC in AKS using Azure AD
+## Lab 12: Implementing RBAC in AKS
 
-1) Get the cluster ID and save it in a variable
+1) Navigate to the RBAC folder. Create a certificate for user called *bob* using (OpenSSL)
 
-```
-AKS_ID=$(az aks show \
-    --resource-group aks-training \
-    --name aks-training-cluster \
-    --query id -o tsv)
-```
-
-2) Create an Azure AD Group called *appdev*\
-`APPDEV_ID=$(az ad group create --display-name appdev --mail-nickname appdev --query objectId -o tsv)`
-
-3) Create an Azure AD Group called *opssre*\
-`OPSSRE_ID=$(az ad group create --display-name opssre --mail-nickname opssre --query objectId -o tsv)`
-
-4) Create a user for the developer role. Replace yourdomain with you AD domain name
-
-```
-AKSDEV_ID=$(az ad user create \
-  --display-name "AKS Dev" \
-  --user-principal-name aksdev@yourdomain.onmicrosoft.com \
-  --password P@ssw0rd1 \
-  --query objectId -o tsv)
+```bash
+openssl genrsa -out bob.key 2048
+openssl req -new -key bob.key -out bob.csr -subj "/CN=bob/O=dev"\n
+cat bob.csr | base64 | tr -d '\n'
 ```
 
-5) Add the developer account to the *appdev* group\
-`az ad group member add --group appdev --member-id $AKSDEV_ID`
-
-6) Create a user for the SRE role. Replace yourdomain with your Azure AD domain name
-
-```
-AKSSRE_ID=$(az ad user create \
-  --display-name "AKS SRE" \
-  --user-principal-name akssre@yourdomain.onmicrosoft.com \
-  --password P@ssw0rd1 \
-  --query objectId -o tsv)
-```
-
-7) Add the user to the opssre Azure AD group\
-`az ad group member add --group opssre --member-id $AKSSRE_ID`
-
+2) Open *k8s-csr.yaml* and update the request field with the output from the previous command (base64 encoded key). Submit the  Certificate Signing Request to K8s\
+`kubectl create -f k8s-csr.yaml`
+3) Verify the request is still pending\
+`kubectl get csr`
+4) As cluster admin, approve the request\
+`kubectl certificate approve bob`
+5) Get the signed certificate from the cluster as a *.crt* file\
+`kubectl get csr bob -o jsonpath='{.status.certificate}' | base64 --decode > bob.crt`
+6) The file, bob.crt is the client certificate that’s used to authenticate Bob. With the combination of the private key (bob.key) and the approved certificate (bob.crt) from Kubernetes, you can get authenticated with the cluster. Add Bob to K8s\
+`kubectl config set-credentials bob --client-certificate=bob.crt --client-key=bob.key --embed-certs=true`
+7) Set the context for Bob\
+`kubectl config set-context bob --cluster=aks-training-cluster --user=bob`
 8) Create a new K8s namespace called *dev*\
 `kubectl create namespace dev`
-
-9) Navigate to the RBAC folder. Create a K8S role called dev, which has full access to the dev namespace\
+9) Check if Bob can list pods on the dev namespace\
+`kubectl auth can-i list pods --namespace dev --as bob`
+9) Create a K8S role called dev, which has full access to the dev namespace\
 `kubectl create -f .\k8s-role-dev.yaml`
-
-10) Get the AD group ID for the developer group\
-`az ad group show --group appdev --query objectId -o tsv`
-
-11) Open *k8s-rolebinding-dev.yaml* and update the group id with the value obtained earlier. Create the role binding for the dev group\
+10) Create the role binding for the dev group\
 `kubectl create -f .\k8s-rolebinding-dev.yaml`
+11) Switch to Bob's context\
+`kubectl config use-context bob`
+12) Check if Bob can list pods on the dev namespace now\
+`kubectl auth can-i list pods --namespace dev`
+13) Try this exercise with another user (say Dave) assigned to the *sre* namespace. 
 
-12) Create a new K8s namespace called *sre*\
-`kubectl create namespace sre`
-
-13) Create a K8S role for SRE with all permissions on the *sre* namespace\
-`kubectl create -f .\k8s-role-sre.yaml`
-
-14) Get the AD group Id of the SRE Group\
-`az ad group show --group opssre --query objectId -o tsv`
-
-15) Open *k8s-rolebinding-sre.yaml* and update the group id with the value obtained earlier. Create the role binding for the dev group\
-`kubectl create -f .\k8s-rolebinding-sre.yaml`
-
-16) Reset existing K8S credentials and try logging with with either dev or sre accounts. The account can only execute pods in the corresponding namespace\
-`az aks get-credentials --resource-group aks-training --name aks-training-cluster --overwrite-existing`\
-`kubectl run nginx-dev --image=nginx --namespace dev`
-
-[For more info, refer to this doc sample](https://docs.microsoft.com/en-us/azure/aks/azure-ad-rbac)
-
-## Lab 13: Autoscaling
+## Lab 13: Autoscaling Pods and AKS Cluster
 
 1) Auto-scale deployment using the Horizontal pod autoscaler using a CPU metric threshold  
 `kubectl autoscale deployment vote-app-deployment --cpu-percent=30 --min=3 --max=6`
@@ -295,4 +258,9 @@ ContainerInventory
 ```
 
 5) To get familiar with alerts, you can select the "Recommended Alerts (Preview)" link from the menu. For this exercise, enable the alert for "OOM Killed Containers" and create an action group to email yourself. Try recreating the memory-stress pod from Lab 7 and verify you get an email alert.
- 
+
+## Lab 16: eShopOnContainers Microservice Application deployment on AKS (optional)
+
+1) In your Azure shell, run the following command:\
+`. <(wget -q -O - https://aka.ms/microservices-aspnet-core-setup)`
+2) For more information, checkout the [MS Learn module on Microservices](https://docs.microsoft.com/en-gb/learn/modules/microservices-aspnet-core/2-deploy-application)

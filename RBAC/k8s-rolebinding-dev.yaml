@@ -8,6 +8,6 @@ roleRef:
   kind: Role
   name: dev-user-full-access
 subjects:
-- kind: Group
+- kind: User
   namespace: dev
-  name: 29e39e18-5919-4f69-8ab3-1c13a2b53e60
+  name: bob
