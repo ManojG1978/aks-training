@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld-mvc-deployment
+  labels:
+    app: helloworld-mvc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helloworld-mvc
+  template:
+    metadata:
+      labels:
+        app: helloworld-mvc
+    spec:
+      containers:
+      - name: helloworld-mvc
+        image: ncaks.azurecr.io/helloworld-mvc:1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: helloworld-port
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # how many pods we can add at a time
+      maxUnavailable: 0  # maxUnavailable define how many pods can be unavailable # during the rolling update
+---            
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: helloworld-mvc
+  name: helloworld-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - name: helloworld-service-port
+    port: 80
+    targetPort: 80
+  selector:
+    app: helloworld-mvc
