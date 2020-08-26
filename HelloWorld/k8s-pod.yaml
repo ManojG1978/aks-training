@@ -5,6 +5,6 @@ metadata:
 spec:
   containers:
   - name: helloworld
-    image: ncaks.azurecr.io/helloworld:1.0
+    image: <<Your ACR Name>>.azurecr.io/helloworld:1.0
     imagePullPolicy: Always
   restartPolicy: Never

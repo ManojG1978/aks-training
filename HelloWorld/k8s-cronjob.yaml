@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
           - name: hello
-            image: ncaks.azurecr.io/helloworld:1.0
+            image: <<your ACR Name>>.azurecr.io/helloworld:1.0
             imagePullPolicy: Always
           restartPolicy: OnFailure
           

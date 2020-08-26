@@ -21,7 +21,7 @@ All labs can be done within the Azure CLI (docker samples can be done on Katacod
    `az group create --name aks-training --location eastus`
 3) Create a Container Registry in the Azure Portal using a unique name. Alternatively, use CLI. Make a note of the ACR name. This will be used through the course\
 `az acr create --resource-group aks-training --name yourACRName --sku Basic  --admin-enabled`
-4) Clone the Lab Git Repo the Azure Cloud Shell and navigate to the root folder of the repo.\
+4) Clone the lab Git Repo the Azure Cloud Shell and navigate to the root folder of the repo.\
 `git clone https://github.com/ManojG1978/aks-training.git`\
 `cd aks-training/HelloWorldMVC`
 5) Build the Docker Image for the Hello World ASP.NET Core MVC site and push it to the ACR\
@@ -30,7 +30,7 @@ All labs can be done within the Azure CLI (docker samples can be done on Katacod
 
 ## Lab 3: Getting Started with AKS
 
-1) Create an AKS cluster in the Portal within the resource group created earlier. Choose Node Count as 1 and Node Size as *Standard_B2s*. Enable Container Insights (We'll look at this later)
+1) Create an AKS cluster in the Portal within the resource group created earlier. Choose Node Count as 1 and Node Size as *Standard_B2s*. Ensure you enable Virtual Nodes under the Node Pools tab. Also enable Enable Container Insights in the Tntegrations tab. Associate the Container Registry we created in step 2.
 2) Navigate to the HelloWorld folder. This contains a simple console app.\
 `cd HelloWorld`
 3) Setup variables to be used in CLI commands later
@@ -91,7 +91,7 @@ REGION=eastus
 ## Lab 7: K8S Resource Requests and Limits
 
 1) Navigate to the HelloWorld folder of the repo.
-2) Open k8s-pod.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
+2) Open *k8s-pod.yaml* using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
 3) Deploy a pod which stresses memory.\
 `kubectl create -f k8s-pod-limits.yaml`
 4) Investigate the Pod lifecycle and check that the POD is terminated due to OOM limits.\
@@ -100,12 +100,12 @@ REGION=eastus
 
 ## Lab 8: K8S Jobs and Cronjob
 
-1) Navigate to the HelloWorld folder of the repo.
+1) Navigate to the *HelloWorld* folder of the repo.
 2) Create a Job from *k8s-job.yaml*. This is a simple job that sleeps for 25 seconds. 3 such executions complete the overall job\
 `kubectl create -f ./k8s-job.yaml`
 3) Investigate the jobs, notice parallelism. Play around with commands and notice how the *backoffLimit* takes effect.\
 `kubectl get jobs --watch`
-4) Open k8s-cronjob.yaml using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
+4) Open *k8s-cronjob.yaml* using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
 5) Create the Cronjob from the manifest\
 `kubectl create -f ./k8s-cronjob.yaml`
 6) Investigate the jobs, they run approximately every minute\
@@ -134,6 +134,7 @@ REGION=eastus
 `kubectl create secret generic storage-key --from-literal=azurestorageaccountname=$AKS_STORAGE_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$STORAGE_KEY`
 5) Deploy the version of the voting app which has volumes attached to the redis pods. Make sure you update the image corresponding to your ACR. This manifest file creates the underlying Persistent Volume and Persistent Volume Claims (Delete any previous deployment of the voting app if they are already running)\
 `kubectl create -f .\k8s-deploy-aks-pv.yaml`
+`kubectl delete -f .\k8s-deploy-aks-pv.yaml` # Delete old deployments
 6) Investigate the K8s objects. Check the redis pod and ensure the volume is mounted.\
 `kubectl get pvc`\
 `kubectl describe pod yourredispodName`
@@ -153,6 +154,8 @@ REGION=eastus
 
 ## Lab 11: Integrating with Azure Key Vault
 
+### Part a) Using Service Principal
+
 1) In this lab, we'll use secrets stored in the Azure KeyVault (as is usually the case with production apps). The first step is to install the Secrets Store CSI Driver to the AKS Cluster\
 `helm repo add csi-secrets-store-provider-azure https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/master/charts`\
 `helm install csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --generate-name`
@@ -162,13 +165,42 @@ REGION=eastus
 4) Create a new Secret with name *connectionString*. Add a secret value.
 5) Create a K8S secret to house the credentials of Service Principal\
 `kubectl create secret generic secrets-store-creds --from-literal clientid=yourClientID --from-literal clientsecret=yourClientSecret`
-6) Create the *ServiceProviderClass* object. Open the k8s-secretprovider.yaml in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID)\
+6) Create the *ServiceProviderClass* object. Open the *k8s-secretprovider.yaml* in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID)\
 `kubectl create -f k8s-secretprovider.yaml`
 7) Create a pod that mounts secrets from the key vault.\
 `kubectl create -f k8s-nginx-secrets.yaml`
 8) To display all the secrets that are contained in the pod, run the following command\
 `kubectl exec -it nginx-secrets-store-inline -- ls /mnt/secrets-store/`
 9) To display the contents of the *connectionString* secret, run the following command:\
+`kubectl exec -it nginx-secrets-store-inline -- cat /mnt/secrets-store/connectionString`
+
+### Part b) Using Managed Identities
+
+1) In this lab, we leverage managed identities in lieu of Service Principal used in part a). This is a better approach as you don't need to store any client id and secret as a K8s secret. It is assumed you have created the key vault and Secret Store CSI driver earlier.
+2) Create a user defined managed identity called *aks-training-identity*. Copy the clientId and principalId for later use.\
+`az identity create -g aks-training -n aks-training-identity`
+3) Assign the Reader role to the Azure AD identity that you created in the preceding step for your key vault, and then grant the identity permissions to get secrets from your key vault. Use the clientId and principalId from the previous step. Verify the assignments in the Azure portal (Access Control (IAM) Blade) in your Key Vault
+
+```
+az role assignment create --role "Reader" --assignee $principalId --scope /subscriptions/<<Your Subscription ID>>/resourceGroups/<<Your Resource Group>>/providers/Microsoft.KeyVault/vaults/<<Your Key vault name>
+
+az keyvault set-policy -n <<your key vault name>> --secret-permissions get --spn $clientId
+
+```
+
+4) Assign the "*Managed Identity Operator*" and "*Virtual Machine Contributor*" roles to the managed identity of the Kubernetes cluster under Subscriptions-> Access Control (IAM). The managed identity will have a name like *aks-training-cluster-agentpool*, where *aks-training-cluster* is the name of the AKS cluster
+5) Install the Azure Active Directory (Azure AD) identity into AKS. This creates the *aad-pod-identity* object in your cluster.\
+`helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts`\
+`helm install pod-identity aad-pod-identity/aad-pod-identity`
+6) Create the *ServiceProviderClass* object mapped to the managed identity. Open the *k8s-secretprovider-mi.yaml* in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your the client ID of the identity, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID). Delete the ServiceProvider object if it already exists and recreate\
+`kubectl create -f k8s-secretprovider-mi.yaml`
+7) Create the Azure Identity and Binding objects. Open the *k8s-podIdentity.yaml* and update the *clientId* and *resourceId* fields with values in your subscription respectively.\
+`kubectl create -f k8s-podIdentity.yaml`
+8) Create a pod that mounts secrets from the key vault. Delete the pod if it already exists and then recreate\
+`kubectl create -f k8s-nginx-secrets-mi.yaml`
+9) To display all the secrets that are contained in the pod, run the following command\
+`kubectl exec -it nginx-secrets-store-inline -- ls /mnt/secrets-store/`
+10) To display the contents of the *connectionString* secret, run the following command:\
 `kubectl exec -it nginx-secrets-store-inline -- cat /mnt/secrets-store/connectionString`
 
 [For More information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/key-vault/general/key-vault-integrate-kubernetes)
@@ -207,11 +239,11 @@ cat bob.csr | base64 | tr -d '\n'
 `kubectl config use-context bob`
 12) Check if Bob can list pods on the dev namespace now\
 `kubectl auth can-i list pods --namespace dev`
-13) Try this exercise with another user (say Dave) assigned to the *sre* namespace. 
+13) Try this exercise with another user (say Dave) assigned to the *sre* namespace.
 
 ## Lab 13: Autoscaling Pods and AKS Cluster
 
-1) Auto-scale deployment using the Horizontal pod autoscaler using a CPU metric threshold  
+1) Auto-scale deployment using the Horizontal Pod Autoscaler (HPA) using a CPU metric threshold  
 `kubectl autoscale deployment vote-app-deployment --cpu-percent=30 --min=3 --max=6`
 2) Manually scale nodes in the cluster using this command:\
 `az aks scale --resource-group aks-training --name aks-training-cluster --node-count 2`
@@ -238,7 +270,7 @@ az aks update \
 
 ## Lab 15: Monitoring and Alerts with Container Insights/Azure Monitor
 
-1) When we setup the cluster earlier in the lab, we had enabled Container Insights. If not, you can go to the Insights blade on the portal, for your AKS cluster and enable it. It might take 5-10 minutes for the data to show up.
+1) When we setup the cluster earlier in the lab, we had enabled Container Insights. If not, you can go to the Insights blade on the portal for your AKS cluster and enable it. It might take 5-10 minutes for the data to show up.
 2) Review the Cluster, Nodes, Controllers, Containers and Deployment tabs respectively.  
 3) For select pods (like Stress), select View Container logs from the right pane
 4) Play with filters and try reviews log records. You can create your own queries like below:
@@ -248,14 +280,14 @@ ContainerInventory
 | where  Image contains "stress"
 ```
 
-5) To get familiar with alerts, you can select the "Recommended Alerts (Preview)" link from the menu. For this exercise, enable the alert for "OOM Killed Containers" and create an action group to email yourself. Try recreating the memory-stress pod from Lab 7 and verify you get an email alert.
+5) To get familiar with alerts, you can select the *Recommended Alerts (Preview)* link from the menu. For this exercise, enable the alert for *OOM Killed Containers* and create an action group to email yourself. Try recreating the memory-stress pod from Lab 7 and verify you get an email alert.
 
 ## Lab 16: Deploying Ingress
 
 1) Create a new namespace for ingress resources\
 `kubectl create namespace ingress-basic`
-2) Add the official stable repository for Helm
-helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+2) Add the official stable repository for Helm\
+`helm repo add stable https://kubernetes-charts.storage.googleapis.com/`
 3) Use Helm to deploy an NGINX ingress controller
 
 ```
@@ -278,8 +310,8 @@ helm install nginx-ingress stable/nginx-ingress \
 
 ## Lab 17: Deploying Virtual Node ACI - Serverless Kubernetes
 
-1) Create a new AKS cluster with Virtual Nodes enabled using the portal
-2) Switch to cluster-admin credentials for the newly created cluster\
+1) In Lab 2, if you created a cluster without enabling virtual nodes, create a new AKS cluster with Virtual Nodes enabled using the portal.
+2) Switch to cluster-admin credentials for this cluster\
 `az aks get-credentials -a --resource-group aks-training --name aks-aci`
 3) Examine the node pools and check a node by name *virtual-node-aci-linux*\
 `kubectl get nodes`
@@ -316,7 +348,7 @@ helm install nginx-ingress stable/nginx-ingress \
 
 ## Lab 19: Event Driven Autoscaling with KEDA
 
-1) Install KEDA into your cluster in a namespace called keda
+1) Install KEDA into your cluster in a namespace called *keda*
 
 ```
 helm repo add kedacore https://kedacore.github.io/charts
@@ -327,7 +359,7 @@ helm install keda kedacore/keda --namespace keda
 
 2) Creating a new Azure Service Bus namespace & queue\
 `az servicebus namespace create --name yourNamespace --resource-group aks-training --sku basic`
-3) Create a queue called orders.\
+3) Create a queue called *orders*.\
 `az servicebus queue create --namespace-name yourNamespace --name orders --resource-group aks-training`
 4) Create a new authorization rule with Management permissions which KEDA requires\
 `az servicebus queue authorization-rule create --resource-group aks-training --namespace-name yourNamespace --queue-name orders --name order-consumer --rights Manage Send Listen`
@@ -337,9 +369,9 @@ helm install keda kedacore/keda --namespace keda
 `kubectl create secret generic order-secrets --from-literal=SERVICEBUS_QUEUE_CONNECTIONSTRING=yourConnectionString`
 7) Navigate to the KEDA folder. Deploy your Order processor\
 `kubectl create -f deploy-queue-processor.yaml`
-8) Navigate to the OrderProcessor folder and run the console app. Create a large number of orders, say 1000
+8) Navigate to the OrderProcessor folder and run the console app. Make sure you update the connection string from step 5. Create a large number of orders, say 1000\
 `dotnet run`
-9) Review the pods and deployment and see the scalout happening. The number of pods should go up to 20 and then get back to 0 when all order messages are processed. Also, review the metrics on the service bus namespace\
+9) Review the pods and deployment and see the scale out happening. The number of pods should go up to 20 and then get back to 0 when all order messages are processed. Also, review the metrics on the service bus namespace\
 `kubectl get deploy order-processor`\
 `kubectl get pods -l app=order-processor -w`
 

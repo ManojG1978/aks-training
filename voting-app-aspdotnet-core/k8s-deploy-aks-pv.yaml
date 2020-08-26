@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: vote-app
-        image: ncaks.azurecr.io/vote-app:1.0
+        image: <<Your ACR Name>>.azurecr.io/vote-app:1.0
         imagePullPolicy: Always
         ports:
         - containerPort: 80
