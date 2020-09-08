@@ -1,0 +1,62 @@
+
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: trigger-auth-service-bus
+spec:
+  secretTargetRef:
+  - parameter: connection
+    name: queue-secrets
+    key: ServiceBusConnectionString
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-consumer
+  namespace: default
+  labels:
+    app: queue-consumer
+spec:
+  selector:
+    matchLabels:
+      app: queue-consumer
+  template:
+    metadata:
+      labels:
+        app: queue-consumer
+    spec:
+      containers:
+      - name: queue-consumer
+        image: nckeda.azurecr.io/queue-consumer:1.0
+        imagePullPolicy: Always
+        env:
+        - name: IN_QUEUE_NAME
+          value: inqueue
+        - name: OUT_QUEUE_NAME
+          value: outqueue
+        - name: SLEEP_TIME
+          value: '30'
+        envFrom:
+        - secretRef:
+            name: queue-secrets
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: queue-consumer
+  namespace: default
+  labels:
+    deploymentName: queue-consumer
+spec:
+    scaleTargetRef:
+      deploymentName: queue-consumer
+    # minReplicaCount: 0 Change to define how many minimum replicas you want
+    maxReplicaCount: 10
+    triggers:
+    - type: azure-servicebus
+      metadata:
+        queueName: inqueue
+        queueLength: '5'
+      authenticationRef:
+        name: trigger-auth-service-bus
