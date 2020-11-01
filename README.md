@@ -133,7 +133,7 @@ REGION=eastus
 `STORAGE_KEY=$(az storage account keys list --resource-group $RG_NAME --account-name $AKS_STORAGE_ACCOUNT_NAME --query "[0].value" -o tsv)`\
 `kubectl create secret generic storage-key --from-literal=azurestorageaccountname=$AKS_STORAGE_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$STORAGE_KEY`
 5) Deploy the version of the voting app which has volumes attached to the redis pods. Make sure you update the image corresponding to your ACR. This manifest file creates the underlying Persistent Volume and Persistent Volume Claims (Delete any previous deployment of the voting app if they are already running)\
-`kubectl create -f .\k8s-deploy-aks-pv.yaml`
+`kubectl create -f .\k8s-deploy-aks-pv.yaml`\
 `kubectl delete -f .\k8s-deploy-aks-pv.yaml` # Delete old deployments
 6) Investigate the K8s objects. Check the redis pod and ensure the volume is mounted.\
 `kubectl get pvc`\
@@ -148,7 +148,7 @@ REGION=eastus
 1) In this lab, we would set up a secret natively in K8s and access that within a pod. No Key Vault involved here. First create a generic secret containing two values - *user* and *password*\
 `kubectl create secret generic k8ssecret --from-literal=user=u123 --from-literal=password=p123`
 2) Navigate to Secrets folder in the repo and create the Pod from the manifest file. In this scenario, secrets are injected into the pod as environment variables and the pod basically echoes the values on the console.\
-`kubectl create -f .\k8s-secrets-env.yaml`
+`kubectl create -f ./k8s-secrets-env.yaml`
 3) Check the pod logs to see the un-encrypted values printed to the console
 `kubectl logs secret-test-pod`
 
@@ -369,7 +369,7 @@ helm install keda kedacore/keda --namespace keda
 `kubectl create secret generic order-secrets --from-literal=SERVICEBUS_QUEUE_CONNECTIONSTRING=yourConnectionString`
 7) Navigate to the KEDA folder. Deploy your Order processor\
 `kubectl create -f deploy-queue-processor.yaml`
-8) Navigate to the OrderProcessor folder and run the console app. Make sure you update the connection string from step 5. Create a large number of orders, say 1000\
+8) Navigate to the Order Generator folder and run the console app. Make sure you update the connection string from step 5. Create a large number of orders, say 1000\
 `dotnet run`
 9) Review the pods and deployment and see the scale out happening. The number of pods should go up to 20 and then get back to 0 when all order messages are processed. Also, review the metrics on the service bus namespace\
 `kubectl get deploy order-processor`\
