@@ -91,10 +91,9 @@ REGION=eastus
 ## Lab 7: K8S Resource Requests and Limits
 
 1) Navigate to the HelloWorld folder of the repo.
-2) Open *k8s-pod.yaml* using the built-in code editor of the shell. Update the image name with the ACR name in your resource group.
-3) Deploy a pod which stresses memory.\
+2) Deploy a pod which stresses memory.\
 `kubectl create -f k8s-pod-limits.yaml`
-4) Investigate the Pod lifecycle and check that the POD is terminated due to OOM limits.\
+3) Investigate the Pod lifecycle and check that the POD is terminated due to OOM limits.\
 `kubectl get pod memory-stress`\
 `kubectl describe pod memory-stress`
 
@@ -122,6 +121,7 @@ AKS_NAME=aks-training-cluster
 ACR_NAME=yourACRName
 RG_NAME=aks-training
 REGION=eastus
+AKS_STORAGE_ACCOUNT_NAME=yourStorageAccount
 ```
 
 2) Create a storage account, which will house the volumes used by the pods\
@@ -133,8 +133,8 @@ REGION=eastus
 `STORAGE_KEY=$(az storage account keys list --resource-group $RG_NAME --account-name $AKS_STORAGE_ACCOUNT_NAME --query "[0].value" -o tsv)`\
 `kubectl create secret generic storage-key --from-literal=azurestorageaccountname=$AKS_STORAGE_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$STORAGE_KEY`
 5) Deploy the version of the voting app which has volumes attached to the redis pods. Make sure you update the image corresponding to your ACR. This manifest file creates the underlying Persistent Volume and Persistent Volume Claims (Delete any previous deployment of the voting app if they are already running)\
-`kubectl create -f .\k8s-deploy-aks-pv.yaml`\
-`kubectl delete -f .\k8s-deploy-aks-pv.yaml` # Delete old deployments
+`kubectl create -f ./k8s-deploy-aks-pv.yaml`\
+`kubectl delete -f ./k8s-deploy-aks-pv.yaml` # Delete old deployments
 6) Investigate the K8s objects. Check the redis pod and ensure the volume is mounted.\
 `kubectl get pvc`\
 `kubectl describe pod yourredispodName`
@@ -257,18 +257,10 @@ az aks update \
   --min-count 1 \
   --max-count 2	
 ```
+
 [For more information, refer docs](https://docs.microsoft.com/en-us/azure/aks/cluster-autoscaler)
 
-## Lab 14: Navigating the native K8s administration portal
-
-1) Switch to cluster-admin credentials\
-`az aks get-credentials -a --resource-group aks-training --name aks-training-cluster`
-2) Download the Kubeconfig from the console menu. It is located at /$HOME/.kube/config
-3) Run the command to access the K8s Admin portal\
-`az aks browse --resource-group aks-training --name aks-training-cluster`
-4) When asked for credentials, choose KubeConfig and select the file you downloaded. The portal should now show up.
-
-## Lab 15: Monitoring and Alerts with Container Insights/Azure Monitor
+## Lab 14: Monitoring and Alerts with Container Insights/Azure Monitor
 
 1) When we setup the cluster earlier in the lab, we had enabled Container Insights. If not, you can go to the Insights blade on the portal for your AKS cluster and enable it. It might take 5-10 minutes for the data to show up.
 2) Review the Cluster, Nodes, Controllers, Containers and Deployment tabs respectively.  
@@ -282,7 +274,7 @@ ContainerInventory
 
 5) To get familiar with alerts, you can select the *Recommended Alerts (Preview)* link from the menu. For this exercise, enable the alert for *OOM Killed Containers* and create an action group to email yourself. Try recreating the memory-stress pod from Lab 7 and verify you get an email alert.
 
-## Lab 16: Deploying Ingress
+## Lab 15: Deploying Ingress
 
 1) Create a new namespace for ingress resources\
 `kubectl create namespace ingress-basic`
@@ -308,7 +300,7 @@ helm install nginx-ingress stable/nginx-ingress \
 
 [For more information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/aks/ingress-basic)
 
-## Lab 17: Deploying Virtual Node ACI - Serverless Kubernetes
+## Lab 16: Deploying Virtual Node ACI - Serverless Kubernetes
 
 1) In Lab 2, if you created a cluster without enabling virtual nodes, create a new AKS cluster with Virtual Nodes enabled using the portal.
 2) Switch to cluster-admin credentials for this cluster\
@@ -330,7 +322,7 @@ helm install nginx-ingress stable/nginx-ingress \
 
 [For more information, refer to Doc sample](https://docs.microsoft.com/en-us/azure/aks/virtual-nodes-portal)
 
-## Lab 18: Managing Deployment Rollout Strategy
+## Lab 17: Managing Deployment Rollout Strategy
 
 1) Navigate to the HelloWorldMVC folder. Notice the *k8s-deploy-rollout.yaml* has a section called *strategy* in the deployment manifest. This is set to *RollingUpdate*
 2) Deploy version 1.0 of the application to start with. Ensure you have updated the image name\
@@ -346,7 +338,7 @@ helm install nginx-ingress stable/nginx-ingress \
 7) Review deployment history\
 `kubectl rollout history deployment helloworld-mvc-deployment`
 
-## Lab 19: Event Driven Autoscaling with KEDA
+## Lab 18: Event Driven Autoscaling with KEDA
 
 1) Install KEDA into your cluster in a namespace called *keda*
 
@@ -377,7 +369,7 @@ helm install keda kedacore/keda --namespace keda
 
 Note: This lab is based on the sample provided by [TomKherkov](https://github.com/tomkerkhove/sample-dotnet-worker-servicebus-queue)
 
-## Lab 20: eShopOnContainers Microservice Application deployment on AKS (optional)
+## Lab 19: eShopOnContainers Microservice Application deployment on AKS (optional)
 
 1) In your Azure shell, run the following command to deploy the eShoponContainers reference implementation for Microservices on Kubernetes. This deploys all resources into a resource group called eshop-learn-rg. \
 `. <(wget -q -O - https://aka.ms/microservices-aspnet-core-setup)`
