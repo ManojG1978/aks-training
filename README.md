@@ -232,9 +232,9 @@ cat bob.csr | base64 | tr -d '\n'
 9) Check if Bob can list pods on the dev namespace\
 `kubectl auth can-i list pods --namespace dev --as bob`
 9) Create a K8S role called dev, which has full access to the dev namespace\
-`kubectl create -f .\k8s-role-dev.yaml`
+`kubectl create -f ./k8s-role-dev.yaml`
 10) Create the role binding for the dev group\
-`kubectl create -f .\k8s-rolebinding-dev.yaml`
+`kubectl create -f ./k8s-rolebinding-dev.yaml`
 11) Switch to Bob's context\
 `kubectl config use-context bob`
 12) Check if Bob can list pods on the dev namespace now\
@@ -346,7 +346,7 @@ helm install nginx-ingress stable/nginx-ingress \
 helm repo add kedacore https://kedacore.github.io/charts
 helm repo update
 kubectl create namespace keda
-helm install keda kedacore/keda --namespace keda
+helm install keda kedacore/keda --version 2.0.0 --namespace keda
 ```
 
 2) Creating a new Azure Service Bus namespace & queue\
