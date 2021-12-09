@@ -276,27 +276,24 @@ ContainerInventory
 
 ## Lab 15: Deploying Ingress
 
-1) Create a new namespace for ingress resources\
-`kubectl create namespace ingress-basic`
-2) Add the official stable repository for Helm\
-`helm repo add stable https://kubernetes-charts.storage.googleapis.com/`
-3) Use Helm to deploy an NGINX ingress controller
+1) Use Helm to deploy an NGINX ingress controller
 
 ```
-helm install nginx-ingress stable/nginx-ingress \
-    --namespace ingress-basic \
-    --set controller.replicaCount=2 \
-    --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux \
-    --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux
+NAMESPACE=ingress-basic
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace $NAMESPACE
 ```
 
-4) Review the services created for Ingress\
+2) Review the services created for Ingress\
 `kubectl get service -l app=nginx-ingress --namespace ingress-basic`
-5) Navigate to the Ingress folder. Create two applications which will serve requests coming through Ingress\
+3) Navigate to the Ingress folder. Create two applications which will serve requests coming through Ingress\
 `kubectl apply -f k8s-ingress-sample.yaml --namespace ingress-basic`
-6) Create the Ingress Routes\
+4) Create the Ingress Routes\
 `kubectl apply -f k8s-ingress-route.yaml --namespace ingress-basic`
-7) Test the ingress controller by access the public IP created from step 3. Test by adding */hello-world-one* and */hello-world-two* to the URL and see the requested routed to the respective backend deployments
+5) Test the ingress controller by access the public IP created from step 3. Test by adding */hello-world-one* and */hello-world-two* to the URL and see the requested routed to the respective backend deployments
 
 [For more information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/aks/ingress-basic)
 
@@ -334,7 +331,7 @@ helm install nginx-ingress stable/nginx-ingress \
 5) Review rollout status and ensure the upgrade is successful by accessing the site\
 `kubectl rollout status deployment helloworld-mvc-deployment`
 6) Rollback the deployment to the previous version\
-`kubectl rollout undo deployment helloworld-mvc-deployment --record`
+`kubectl rollout undo deployment helloworld-mvc-deployment`
 7) Review deployment history\
 `kubectl rollout history deployment helloworld-mvc-deployment`
 
