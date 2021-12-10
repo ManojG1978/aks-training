@@ -154,56 +154,56 @@ AKS_STORAGE_ACCOUNT_NAME=yourStorageAccount
 
 ## Lab 11: Integrating with Azure Key Vault
 
-### Part a) Using Service Principal
+1) Install the secrets provider for the cluster
 
-1) In this lab, we'll use secrets stored in the Azure KeyVault (as is usually the case with production apps). The first step is to install the Secrets Store CSI Driver to the AKS Cluster\
-`helm repo add csi-secrets-store-provider-azure https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/master/charts`\
-`helm install csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --generate-name`
-2) Create a new Service Principal and note the client id and secret values\
-`az ad sp create-for-rbac --name aksServicePrincipal --skip-assignment`
-3) Setup a Key Vault in the portal, ensure you assign Get and List permissions to the newly created Service Principal.
-4) Create a new Secret with name *connectionString*. Add a secret value.
-5) Create a K8S secret to house the credentials of Service Principal\
-`kubectl create secret generic secrets-store-creds --from-literal clientid=yourClientID --from-literal clientsecret=yourClientSecret`
-6) Create the *ServiceProviderClass* object. Open the *k8s-secretprovider.yaml* in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your Service Principal ID, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID)\
-`kubectl create -f k8s-secretprovider.yaml`
-7) Create a pod that mounts secrets from the key vault.\
-`kubectl create -f k8s-nginx-secrets.yaml`
-8) To display all the secrets that are contained in the pod, run the following command\
-`kubectl exec -it nginx-secrets-store-inline -- ls /mnt/secrets-store/`
-9) To display the contents of the *connectionString* secret, run the following command:\
-`kubectl exec -it nginx-secrets-store-inline -- cat /mnt/secrets-store/connectionString`
+`az aks enable-addons --addons azure-keyvault-secrets-provider --name <<cluster name>> --resource-group aks-training`
 
-### Part b) Using Managed Identities
+2) Enable Pod Identity (Preview)
+   
+`az feature register --name EnablePodIdentityPreview --namespace Microsoft.ContainerService`
 
-1) In this lab, we leverage managed identities in lieu of Service Principal used in part a). This is a better approach as you don't need to store any client id and secret as a K8s secret. It is assumed you have created the key vault and Secret Store CSI driver earlier.
-2) Create a user defined managed identity called *aks-training-identity*. Copy the clientId and principalId for later use.\
-`az identity create -g aks-training -n aks-training-identity`
-3) Assign the Reader role to the Azure AD identity that you created in the preceding step for your key vault, and then grant the identity permissions to get secrets from your key vault. Use the clientId and principalId from the previous step. Verify the assignments in the Azure portal (Access Control (IAM) Blade) in your Key Vault
+3) Install preview extensions on CLI
+
+`az extension add --name aks-preview`\
+`az extension update --name aks-preview`
+
+4) Enable Pod Identity in existing cluster
+
+`az aks update -g aks-training -n <<cluster name>> --enable-pod-identity`
+
+5) Create a Key vault
+
+`az keyvault create -n <<vault name>> -g aks-training -l eastus`
+
+6) Create a user defined managed identity and an associated pod identity
 
 ```
-az role assignment create --role "Reader" --assignee $principalId --scope /subscriptions/<<Your Subscription ID>>/resourceGroups/<<Your Resource Group>>/providers/Microsoft.KeyVault/vaults/<<Your Key vault name>
+export IDENTITY_RESOURCE_GROUP="aks-training"
+export IDENTITY_NAME="application-identity"
 
-az keyvault set-policy -n <<your key vault name>> --secret-permissions get --spn $clientId
+az identity create --resource-group ${IDENTITY_RESOURCE_GROUP} --name ${IDENTITY_NAME}
 
+export IDENTITY_CLIENT_ID="$(az identity show -g ${IDENTITY_RESOURCE_GROUP} -n ${IDENTITY_NAME} --query clientId -otsv)"
+export IDENTITY_RESOURCE_ID="$(az identity show -g ${IDENTITY_RESOURCE_GROUP} -n ${IDENTITY_NAME} --query id -otsv)"
+export POD_IDENTITY_NAMESPACE="podIdentity"
+
+az aks pod-identity add --resource-group $IDENTITY_RESOURCE_GROUP --cluster-name aks-training --namespace ${POD_IDENTITY_NAMESPACE}  --name ${IDENTITY_NAME} --identity-resource-id ${IDENTITY_RESOURCE_ID}
 ```
 
-4) Assign the "*Managed Identity Operator*" and "*Virtual Machine Contributor*" roles to the managed identity of the Kubernetes cluster under Subscriptions-> Access Control (IAM). The managed identity will have a name like *aks-training-cluster-agentpool*, where *aks-training-cluster* is the name of the AKS cluster
-5) Install the Azure Active Directory (Azure AD) identity into AKS. This creates the *aad-pod-identity* object in your cluster.\
-`helm repo add aad-pod-identity https://raw.githubusercontent.com/Azure/aad-pod-identity/master/charts`\
-`helm install pod-identity aad-pod-identity/aad-pod-identity`
-6) Create the *ServiceProviderClass* object mapped to the managed identity. Open the *k8s-secretprovider-mi.yaml* in the Code editor (Secrets folder) and update  *userAssignedIdentityID* with your the client ID of the identity, *keyvaultName* with the name of the vault you created, *subscriptionId* with your subscription ID, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID). Delete the ServiceProvider object if it already exists and recreate\
+7) Assign permissions to the new identity to enable it to read your key vault
+ 
+`az keyvault set-policy -n <keyvault-name> --secret-permissions get --spn $IDENTITY_CLIENT_ID`
+
+8) Create the *ServiceProviderClass* object mapped to the managed identity. Open the *k8s-secretprovider-mi.yaml* in the Code editor (Secrets folder) and update  *keyvaultName* with the name of the vault you created, and *tenantId* with your tenant ID (run *az account list* for getting tenant ID and subscription ID). Delete the ServiceProvider object if it already exists and recreate\
 `kubectl create -f k8s-secretprovider-mi.yaml`
-7) Create the Azure Identity and Binding objects. Open the *k8s-podIdentity.yaml* and update the *clientId* and *resourceId* fields with values in your subscription respectively.\
-`kubectl create -f k8s-podIdentity.yaml`
-8) Create a pod that mounts secrets from the key vault. Delete the pod if it already exists and then recreate\
+9) Create a pod that mounts secrets from the key vault. Delete the pod if it already exists and then recreate\
 `kubectl create -f k8s-nginx-secrets-mi.yaml`
 9) To display all the secrets that are contained in the pod, run the following command\
 `kubectl exec -it nginx-secrets-store-inline -- ls /mnt/secrets-store/`
 10) To display the contents of the *connectionString* secret, run the following command:\
 `kubectl exec -it nginx-secrets-store-inline -- cat /mnt/secrets-store/connectionString`
 
-[For More information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/key-vault/general/key-vault-integrate-kubernetes)
+[For More information, refer to the Docs sample](https://docs.microsoft.com/en-us/azure/aks/csi-secrets-store-identity-access)
 
 ## Lab 12: Implementing RBAC in AKS
 
